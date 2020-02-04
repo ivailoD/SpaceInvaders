@@ -23,13 +23,15 @@
     <audio id="player-hitted">
       <source src="./sounds/player-hitted.wav" type="audio/wav" />
     </audio>
+    <audio id="game-over">
+      <source src="./sounds/game-over.wav" type="audio/wav" />
+    </audio>
     <div id="gameContainer"></div>
   </body>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pixi.js/5.1.3/pixi.min.js"></script>
   <script>
     let app;
     let player;
-    //let enemy;
     let bullets = [];
     let enemyBullets = [];
     let enemyArr = [];
@@ -43,10 +45,10 @@
         height: 600,
         backgroundColor: 0xa7afbe
       });
+
       document.querySelector("#gameContainer").appendChild(app.view);
 
       let gameCtr = document.querySelector("#gameContainer");
-      //shot sound
 
       //Making player object
 
@@ -73,8 +75,10 @@
         enemyArr.push(enemy);
 
         enemy.anchor.set(0.5);
-        enemy.x = (i % 5) * 50;
-        enemy.y = Math.floor(i / 5) * 36;
+        enemy.x = (i % 5) * 52;
+        enemy.y = Math.floor(i / 5) * 42;
+        enemy.width = 30;
+        enemy.height = 30;
         container.addChild(enemy);
       }
 
@@ -83,6 +87,8 @@
       container.vx = 4;
 
       container.vy = 0;
+      gameOverTexture = PIXI.Texture.from("./images/game-over.jpg");
+      gameOverScreen = new PIXI.Sprite(gameOverTexture);
 
       livesContainer = new PIXI.Container();
 
@@ -134,26 +140,6 @@
         wordWrapWidth: 440
       });
 
-      function containerMove(delta) {
-        container.y += container.vy;
-        container.x += container.vx;
-        //container.vy += 0.1;
-
-        // if (container.y > 500) {
-        //   container.vy *= -1.01;
-        //   container.y += container.vy;
-        // }
-
-        if (container.x > 660) {
-          container.vx *= -1;
-          container.x += container.vx;
-        }
-        if (container.x < 0) {
-          container.vx *= -1;
-          container.x += container.vx;
-        }
-      }
-
       //keyboard event handler TBD
 
       //Mouse interactions
@@ -164,8 +150,27 @@
       document
         .querySelector("#gameContainer")
         .addEventListener("pointerdown", fireBullet);
-
     };
+
+    function containerMove(delta) {
+      container.y += container.vy;
+      container.x += container.vx;
+      //container.vy += 0.1;
+
+      // if (container.y > 500) {
+      //   container.vy *= -1.01;
+      //   container.y += container.vy;
+      // }
+
+      if (container.x > 660) {
+        container.vx *= -1;
+        container.x += container.vx;
+      }
+      if (container.x < 0) {
+        container.vx *= -1;
+        container.x += container.vx;
+      }
+    }
 
     function updateBullets(delta) {
       for (let i = 0; i < bullets.length; i++) {
@@ -174,15 +179,11 @@
         if (bullets[i].position.y < 0) {
           bullets[i].bulletGone = true;
         }
-      }
-
-      for (let i = 0; i < bullets.length; i++) {
         if (bullets[i].bulletGone) {
           app.stage.removeChild(bullets[i]);
           bullets.splice(i, 1);
         }
       }
-
       //enemy shoot
       for (let i = 0; i < enemyBullets.length; i++) {
         enemyBullets[i].position.y += enemyBullets[i].speed;
@@ -249,7 +250,40 @@
 
     function gameLoop() {
       updateBullets();
+      removeAliens();
+      removeLives();
+    }
+    function removeLives() {
+      for (let i = 0; i < enemyBullets.length; i++) {
+        if (enemyBullets[i] && isPlayerHitted(player, enemyBullets[i])) {
+          if (lives.length > 0) {
+            livesContainer.removeChild(lives[0]);
+            lives.splice(0, 1);
+            playerHitted = document.getElementById("player-hitted");
+            playerHitted.play();
 
+            app.stage.removeChild(enemyBullets[i]);
+            enemyBullets.splice(i, 1);
+          }
+          if (lives.length === 0) {
+            gameOverScreen.anchor.set(0.5);
+            gameOverScreen.x = app.view.width / 2;
+            gameOverScreen.y = app.view.height / 2;
+            gameOverScreen.width = app.view.width;
+            gameOverScreen.height = app.view.height;
+            app.stage.addChild(gameOverScreen);
+            playerHitted.pause();
+            //app.stage.removeChild(player);
+            //shotSound.pause();
+            // gameOverSound = document.getElementById("game-over");
+            // gameOverSound.play();
+
+            //game over sound
+          }
+        }
+      }
+    }
+    function removeAliens() {
       for (let i = 0; i < enemyArr.length; i++) {
         for (let j = 0; j < bullets.length; j++) {
           if (bullets[j] && isEnemyHitted(bullets[j], enemyArr[i])) {
@@ -270,23 +304,6 @@
           }
         }
       }
-
-      for (let i = 0; i < enemyBullets.length; i++) {
-        if (enemyBullets[i] && isPlayerHitted(player, enemyBullets[i])) {
-          if (lives.length > 0) {
-            livesContainer.removeChild(lives[0]);
-            lives.splice(0, 1);
-            playerHitted = document.getElementById("player-hitted");
-            playerHitted.play();
-
-            app.stage.removeChild(enemyBullets[i]);
-            enemyBullets.splice(i, 1);
-          }
-          if (lives.length === 0) {
-            alert("GAME OVER :(");
-          }
-        }
-      }
     }
 
     function isEnemyHitted(r1, r2) {
@@ -298,7 +315,6 @@
         height: r2.height
       };
 
-      //console.log( r2.x+container.x);
       if (
         rect1.x < rect2.x + rect2.width &&
         rect1.x + rect1.width > rect2.x &&
